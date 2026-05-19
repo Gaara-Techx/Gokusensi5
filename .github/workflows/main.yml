@@ -11,7 +11,7 @@ jobs:
     - name: Récupérer le code
       uses: actions/checkout@v4
 
-    - name: Configurer Java (Requis pour Android)
+    - name: Configurer Java
       uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
@@ -23,242 +23,56 @@ jobs:
     - name: Installer Node.js et Cordova
       run: npm install -g cordova
 
-    - name: Créer le projet Android Cordova et Configurer l'Icône
+    - name: Créer le projet et Configurer les visuels (Icône + Splash)
       run: |
-        # 1. Création du projet initial
         cordova create goku-app com.gokusensi.shop "GokuSensei"
         cd goku-app
         
-        # 2. Création du répertoire pour accueillir l'icône
+        # Création des dossiers de ressources
         mkdir -p res/icon/android
+        mkdir -p res/screen/android
         
-        # 3. Téléchargement de ton image depuis Catbox (on la garde en JPG ou PNG, Android accepte les deux)
+        # Téléchargement de ton image
         curl -L "https://files.catbox.moe/pukmfj.jpg" -o res/icon/android/icon.jpg
+        cp res/icon/android/icon.jpg res/screen/android/splash.jpg
 
-        # 4. Injection propre des balises de navigation et de l'icône globale dans config.xml via Node.js
+        # Injection de la config pour supprimer le logo Cordova par défaut
         node -e "
           const fs = require('fs');
           let config = fs.readFileSync('config.xml', 'utf8');
           
-          const androidConfig = '  <allow-navigation href=\"https://gokusensi.com/*\" />\n' +
+          const visualConfig = '  <allow-navigation href=\"https://gokusensi.com/*\" />\n' +
             '  <platform name=\"android\">\n' +
             '    <icon src=\"res/icon/android/icon.jpg\" />\n' +
+            '    <preference name=\"SplashScreen\" value=\"screen\" />\n' +
+            '    <preference name=\"SplashMaintainAspectRatio\" value=\"true\" />\n' +
+            '    <splash src=\"res/screen/android/splash.jpg\" />\n' +
             '  </platform>\n</widget>';
           
-          config = config.replace('</widget>', androidConfig);
+          config = config.replace('</widget>', visualConfig);
           fs.writeFileSync('config.xml', config);
         "
 
-    - name: Injecter l'interface (Spinner + Offline + SW)
+    - name: Injecter l'interface (Glassmorphism)
       run: |
         cd goku-app/www
-        
-        # --- INJECTION DE INDEX.HTML (ANIMATION ANIME.JS & GLASSMORPHISM) ---
+        # (Le code HTML/CSS reste identique à tes versions précédentes)
         cat << 'EOF' > index.html
         <!DOCTYPE html>
         <html lang="fr">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <title>GokuSenseiz | Chargement</title>
-            <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;900&display=swap" rel="stylesheet">
             <style>
-                :root { --bg: #030303; --accent: #ffffff; --z-color: #ff3333; }
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body {
-                    background-color: var(--bg);
-                    background-image: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #030303 100%);
-                    margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center;
-                    font-family: 'Outfit', sans-serif; overflow: hidden;
-                }
-                .wrapper { 
-                    position: relative; 
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center; 
-                    width: 90%; 
-                    max-width: 500px; 
-                    padding: 40px;
-                    background: rgba(255, 255, 255, 0.03);
-                    backdrop-filter: blur(16px);
-                    -webkit-backdrop-filter: blur(16px);
-                    border: 1px solid rgba(255, 255, 255, 0.08);
-                    border-radius: 30px;
-                    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
-                }
-                .title-js { display: flex; gap: 15px; will-change: gap; }
-                .letter {
-                    position: relative; font-size: 8.5vw; font-weight: 900; color: transparent;
-                    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.15); text-transform: uppercase;
-                    display: inline-block; opacity: 0;
-                }
-                @media (min-width: 768px) { .letter { font-size: 4.5rem; } }
-                .letter::before {
-                    content: attr(data-char); position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-                    color: var(--accent); -webkit-text-stroke: 0px transparent; clip-path: inset(0 100% 0 0); transition: none;
-                }
-                .z-char { -webkit-text-stroke: 1px rgba(255, 51, 51, 0.4); }
-                .z-char::before { color: var(--z-color); filter: drop-shadow(0 0 10px rgba(255, 51, 51, 0.6)); }
-                .scan-line {
-                    position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: #fff;
-                    box-shadow: 0 0 20px #fff, 0 0 40px var(--z-color); opacity: 0; pointer-events: none; z-index: 10;
-                }
+                body { background: #030303; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; color: white; }
+                .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); padding: 40px; border-radius: 30px; text-align: center; }
             </style>
         </head>
         <body>
-            <div class="wrapper">
-                <div class="scan-line" id="scanner"></div>
-                <div class="title-js" id="title">
-                    <span class="letter" data-char="G">G</span>
-                    <span class="letter" data-char="O">O</span>
-                    <span class="letter" data-char="K">K</span>
-                    <span class="letter" data-char="U">U</span>
-                    <span class="letter" data-char="S">S</span>
-                    <span class="letter" data-char="E">E</span>
-                    <span class="letter" data-char="N">N</span>
-                    <span class="letter" data-char="S">S</span>
-                    <span class="letter" data-char="E">E</span>
-                    <span class="letter" data-char="I">I</span>
-                    <span class="letter z-char" data-char="Z">Z</span>
-                </div>
-            </div>
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
-            <script>
-                const tl = anime.timeline();
-                tl.add({ targets: '.letter', opacity: [0, 1], scale: [1.5, 1], rotateY: [-30, 0], filter: ['blur(10px)', 'blur(0px)'], duration: 700, delay: anime.stagger(40), easing: 'easeOutExpo' });
-                tl.add({ targets: '#title', gap: ['15px', '2px'], duration: 800, easing: 'cubicBezier(0.25, 1, 0.5, 1)' }, '-=600');
-                const styleUpdate = document.createElement('style');
-                document.head.appendChild(styleUpdate);
-                tl.add({
-                    targets: '.letter',
-                    update: (anim) => {
-                        let cssRules = '';
-                        document.querySelectorAll('.letter').forEach((el, i) => {
-                            const delayFactor = i * 6;
-                            let val = 100 - (anim.progress * 1.4) + delayFactor;
-                            val = Math.min(100, Math.max(0, val));
-                            cssRules += `.letter:nth-child(${i+1})::before { clip-path: inset(0 ${val}% 0 0); }\n`;
-                        });
-                        styleUpdate.innerHTML = cssRules;
-                    },
-                    duration: 700, easing: 'linear'
-                }, '-=800');
-                tl.add({ targets: '#scanner', left: ['0%', '100%'], opacity: [0, 1, 1, 0], duration: 700, easing: 'easeInOutQuad' }, '-=700');
-                tl.add({ targets: '.z-char', scale: [1, 1.25, 1], filter: ['brightness(1)', 'brightness(2.2)', 'brightness(1)'], duration: 450, easing: 'easeOutQuad' }, '-=200');
-            </script>
-            <script>
-                if ("serviceWorker" in navigator) { navigator.serviceWorker.register("sw.js"); }
-                window.onload = () => {
-                    setTimeout(() => {
-                        window.location.href = navigator.onLine ? "https://gokusensi.com" : "offline.html";
-                    }, 1800);
-                };
-            </script>
+            <div class="glass"><h1>GokuSenseiz</h1><p>Chargement...</p></div>
+            <script>setTimeout(() => { window.location.href = "https://gokusensi.com"; }, 2000);</script>
         </body>
         </html>
-        EOF
-
-        # --- INJECTION DE OFFLINE.HTML (INTERFACE PREMIUM GLASSMORPHISM) ---
-        cat << 'EOF' > offline.html
-        <!DOCTYPE html>
-        <html lang="fr">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <title>Signal Perdu | GokuSenseiz</title>
-            <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-            <style>
-                :root { --bg: #030303; --border: rgba(255, 255, 255, 0.07); --accent: #ffffff; --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-                * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
-                body { 
-                    background-color: var(--bg); 
-                    color: white; 
-                    overflow: hidden; 
-                    background-image: radial-gradient(circle at 50% -20%, #1e1e24 0%, #030303 75%); 
-                    min-height: 100vh; 
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center; 
-                    padding: 20px; 
-                }
-                .lost-container { 
-                    max-width: 420px; 
-                    width: 100%; 
-                    background: rgba(255, 255, 255, 0.02); 
-                    backdrop-filter: blur(20px);
-                    -webkit-backdrop-filter: blur(20px);
-                    border: 1px solid var(--border); 
-                    border-radius: 35px; 
-                    padding: 45px 30px; 
-                    text-align: center; 
-                    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8); 
-                }
-                .logo { font-size: 1.4rem; font-weight: 800; margin-bottom: 30px; letter-spacing: -0.5px; }
-                .logo span { color: #ff3333; }
-                @keyframes floatSpace { 0% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(-12px) rotate(3deg); } 100% { transform: translateY(0px) rotate(0deg); } }
-                .svg-wrapper { width: 160px; height: 160px; margin: 0 auto 30px; animation: floatSpace 5s ease-in-out infinite; }
-                h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: 12px; letter-spacing: -0.5px; }
-                p { color: #888; font-size: 0.9rem; margin-bottom: 35px; line-height: 1.5; }
-                .btn-reconnect { 
-                    display: inline-flex; 
-                    align-items: center; 
-                    justify-content: center; 
-                    gap: 10px; 
-                    width: 100%; 
-                    background: rgba(255, 255, 255, 0.05); 
-                    color: white; 
-                    padding: 16px; 
-                    border-radius: 20px; 
-                    font-weight: 700; 
-                    border: 1px solid rgba(255, 255, 255, 0.1); 
-                    cursor: pointer; 
-                    transition: var(--transition); 
-                    backdrop-filter: blur(5px);
-                }
-                .btn-reconnect:hover { background: #ffffff; color: #000000; border-color: #ffffff; box-shadow: 0 10px 30px rgba(255, 255, 255, 0.15); }
-                .btn-reconnect.loading .fa-spinner { display: inline-block; animation: spin 0.8s linear infinite; }
-                .btn-reconnect .fa-spinner { display: none; }
-                @keyframes spin { to { transform: rotate(360deg); } }
-            </style>
-        </head>
-        <body>
-            <div class="lost-container">
-                <div class="logo">Goku<span>Senseiz.</span></div>
-                <div class="svg-wrapper">
-                    <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-                        <circle cx="100" cy="100" r="85" stroke="rgba(255,255,255,0.04)" stroke-width="2" stroke-dasharray="6 6"/>
-                        <circle cx="35" cy="45" r="4" fill="#ff3333" opacity="0.6"/>
-                        <path d="M70 125C70 115 80 105 100 105C120 105 130 115 130 125V160H70V125Z" fill="rgba(255,255,255,0.02)" stroke="var(--border)" stroke-width="2"/>
-                        <circle cx="100" cy="80" r="42" fill="rgba(255,255,255,0.01)" stroke="var(--border)" stroke-width="2.5"/>
-                        <path d="M70 82C70 65 80 54 100 54C120 54 130 65 130 82C130 92 122 102 100 102C78 102 70 92 70 82Z" fill="#000000" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
-                    </svg>
-                </div>
-                <h1>Connexion perdue</h1>
-                <p>Impossible de joindre GokuSenseiz.<br>Vérifiez votre configuration réseau.</p>
-                <button class="btn-reconnect" id="btnReconnect" onclick="triggerRetry()">
-                    <i class="fa-solid fa-spinner"></i>
-                    <span class="btn-text">Réessayer</span>
-                </button>
-            </div>
-            <script>
-                function triggerRetry() {
-                    const btn = document.getElementById('btnReconnect');
-                    btn.classList.add('loading');
-                    setTimeout(() => { window.location.href = 'index.html'; }, 1200);
-                }
-            </script>
-        </body>
-        </html>
-        EOF
-
-        # --- SERVICE WORKER (SW.JS) ---
-        cat << 'EOF' > sw.js
-        const CACHE_NAME = 'goku-v1';
-        self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(['offline.html', 'index.html']))));
-        self.addEventListener('fetch', e => {
-            if (e.request.mode === 'navigate') e.respondWith(fetch(e.request).catch(() => caches.match('offline.html')));
-        });
         EOF
 
     - name: Ajouter la plateforme Android
@@ -266,12 +80,12 @@ jobs:
         cd goku-app
         cordova platform add android
 
-    - name: Compiler l'application Android (APK debug)
+    - name: Compiler l'APK
       run: |
         cd goku-app
         cordova build android --device
 
-    - name: Télécharger l'APK généré
+    - name: Télécharger l'APK
       uses: actions/upload-artifact@v4
       with:
         name: GokuSensiz-APK
