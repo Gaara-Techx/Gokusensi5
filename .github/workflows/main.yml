@@ -1,78 +1,51 @@
-name: Compiler Gokusensi IPA
+name: Compiler Gokusensi APK
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
 
     steps:
     - name: Récupérer le code
       uses: actions/checkout@v4
 
+    - name: Configurer Java (Requis pour Android)
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+
+    - name: Configurer le SDK Android
+      uses: android-actions/setup-android@v3
+
     - name: Installer Node.js et Cordova
       run: npm install -g cordova
 
-    - name: Créer le projet iOS Cordova et Configurer l'Icône
+    - name: Créer le projet Android Cordova et Configurer l'Icône
       run: |
         # 1. Création du projet initial
         cordova create goku-app com.gokusensi.shop "GokuSensei"
         cd goku-app
         
-        # 2. Création du répertoire pour accueillir les assets de l'icône
-        mkdir -p res/icon/ios
+        # 2. Création du répertoire pour accueillir l'icône
+        mkdir -p res/icon/android
         
-        # 3. Téléchargement de ton image de base depuis Catbox
-        curl -L "https://files.catbox.moe/pukmfj.jpg" -o res/icon/ios/base.jpg
-        
-        # 4. Génération de toutes les dimensions d'icônes obligatoires pour iOS au format PNG
-        sips -z 1024 1024 res/icon/ios/base.jpg --out res/icon/ios/icon-1024.png
-        sips -z 180 180   res/icon/ios/base.jpg --out res/icon/ios/icon-60@3x.png
-        sips -z 120 120   res/icon/ios/base.jpg --out res/icon/ios/icon-60@2x.png
-        sips -z 76 76     res/icon/ios/base.jpg --out res/icon/ios/icon-76.png
-        sips -z 152 152   res/icon/ios/base.jpg --out res/icon/ios/icon-76@2x.png
-        sips -z 167 167   res/icon/ios/base.jpg --out res/icon/ios/icon-83.5@2x.png
-        sips -z 40 40     res/icon/ios/base.jpg --out res/icon/ios/icon-40.png
-        sips -z 80 80     res/icon/ios/base.jpg --out res/icon/ios/icon-40@2x.png
-        sips -z 120 120   res/icon/ios/base.jpg --out res/icon/ios/icon-40@3x.png
-        sips -z 57 57     res/icon/ios/base.jpg --out res/icon/ios/icon.png
-        sips -z 114 114   res/icon/ios/base.jpg --out res/icon/ios/icon@2x.png
-        sips -z 29 29     res/icon/ios/base.jpg --out res/icon/ios/icon-small.png
-        sips -z 58 58     res/icon/ios/base.jpg --out res/icon/ios/icon-small@2x.png
-        sips -z 87 87     res/icon/ios/base.jpg --out res/icon/ios/icon-small@3x.png
-        sips -z 50 50     res/icon/ios/icon-small.png --out res/icon/ios/icon-50.png
-        sips -z 100 100   res/icon/ios/icon-small@2x.png --out res/icon/ios/icon-50@2x.png
-        
-        # Nettoyage du fichier JPG temporaire
-        rm res/icon/ios/base.jpg
+        # 3. Téléchargement de ton image depuis Catbox (on la garde en JPG ou PNG, Android accepte les deux)
+        curl -L "https://files.catbox.moe/pukmfj.jpg" -o res/icon/android/icon.jpg
 
-        # 5. Injection propre des balises de navigation et de toutes les icônes dans config.xml via Node.js
+        # 4. Injection propre des balises de navigation et de l'icône globale dans config.xml via Node.js
         node -e "
           const fs = require('fs');
           let config = fs.readFileSync('config.xml', 'utf8');
           
-          const iosIconsConfig = '  <allow-navigation href=\"https://gokusensi.com/*\" />\n' +
-            '  <platform name=\"ios\">\n' +
-            '    <icon src=\"res/icon/ios/icon-1024.png\" width=\"1024\" height=\"1024\" />\n' +
-            '    <icon src=\"res/icon/ios/icon-60@3x.png\" width=\"180\" height=\"180\" />\n' +
-            '    <icon src=\"res/icon/ios/icon-60@2x.png\" width=\"120\" height=\"120\" />\n' +
-            '    <icon src=\"res/icon/ios/icon-76.png\" width=\"76\" height=\"76\" />\n' +
-            '    <icon src=\"res/icon/ios/icon-76@2x.png\" width=\"152\" height=\"152\" />\n' +
-            '    <icon src=\"res/icon/ios/icon-83.5@2x.png\" width=\"167\" height=\"167\" />\n' +
-            '    <icon src=\"res/icon/ios/icon-40.png\" width=\"40\" height=\"40\" />\n' +
-            '    <icon src=\"res/icon/ios/icon-40@2x.png\" width=\"80\" height=\"80\" />\n' +
-            '    <icon src=\"res/icon/ios/icon-40@3x.png\" width=\"120\" height=\"120\" />\n' +
-            '    <icon src=\"res/icon/ios/icon.png\" width=\"57\" height=\"57\" />\n' +
-            '    <icon src=\"res/icon/ios/icon@2x.png\" width=\"114\" height=\"114\" />\n' +
-            '    <icon src=\"res/icon/ios/icon-small.png\" width=\"29\" height=\"29\" />\n' +
-            '    <icon src=\"res/icon/ios/icon-small@2x.png\" width=\"58\" height=\"58\" />\n' +
-            '    <icon src=\"res/icon/ios/icon-small@3x.png\" width=\"87\" height=\"87\" />\n' +
-            '    <icon src=\"res/icon/ios/icon-50.png\" width=\"50\" height=\"50\" />\n' +
-            '    <icon src=\"res/icon/ios/icon-50@2x.png\" width=\"100\" height=\"100\" />\n' +
+          const androidConfig = '  <allow-navigation href=\"https://gokusensi.com/*\" />\n' +
+            '  <platform name=\"android\">\n' +
+            '    <icon src=\"res/icon/android/icon.jpg\" />\n' +
             '  </platform>\n</widget>';
           
-          config = config.replace('</widget>', iosIconsConfig);
+          config = config.replace('</widget>', androidConfig);
           fs.writeFileSync('config.xml', config);
         "
 
@@ -80,7 +53,7 @@ jobs:
       run: |
         cd goku-app/www
         
-        # --- INJECTION DE INDEX.HTML (ANIMATION ANIME.JS) ---
+        # --- INJECTION DE INDEX.HTML (ANIMATION ANIME.JS & GLASSMORPHISM) ---
         cat << 'EOF' > index.html
         <!DOCTYPE html>
         <html lang="fr">
@@ -98,7 +71,21 @@ jobs:
                     margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center;
                     font-family: 'Outfit', sans-serif; overflow: hidden;
                 }
-                .wrapper { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; max-width: 600px; padding: 20px; }
+                .wrapper { 
+                    position: relative; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    width: 90%; 
+                    max-width: 500px; 
+                    padding: 40px;
+                    background: rgba(255, 255, 255, 0.03);
+                    backdrop-filter: blur(16px);
+                    -webkit-backdrop-filter: blur(16px);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 30px;
+                    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
+                }
                 .title-js { display: flex; gap: 15px; will-change: gap; }
                 .letter {
                     position: relative; font-size: 8.5vw; font-weight: 900; color: transparent;
@@ -113,7 +100,7 @@ jobs:
                 .z-char { -webkit-text-stroke: 1px rgba(255, 51, 51, 0.4); }
                 .z-char::before { color: var(--z-color); filter: drop-shadow(0 0 10px rgba(255, 51, 51, 0.6)); }
                 .scan-line {
-                    position: absolute; top: -20%; bottom: -20%; left: 0; width: 3px; background: #fff;
+                    position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: #fff;
                     box-shadow: 0 0 20px #fff, 0 0 40px var(--z-color); opacity: 0; pointer-events: none; z-index: 10;
                 }
             </style>
@@ -156,7 +143,7 @@ jobs:
                     },
                     duration: 700, easing: 'linear'
                 }, '-=800');
-                tl.add({ targets: '#scanner', left: ['-5%', '105%'], opacity: [0, 1, 1, 0], duration: 700, easing: 'easeInOutQuad' }, '-=700');
+                tl.add({ targets: '#scanner', left: ['0%', '100%'], opacity: [0, 1, 1, 0], duration: 700, easing: 'easeInOutQuad' }, '-=700');
                 tl.add({ targets: '.z-char', scale: [1, 1.25, 1], filter: ['brightness(1)', 'brightness(2.2)', 'brightness(1)'], duration: 450, easing: 'easeOutQuad' }, '-=200');
             </script>
             <script>
@@ -164,14 +151,14 @@ jobs:
                 window.onload = () => {
                     setTimeout(() => {
                         window.location.href = navigator.onLine ? "https://gokusensi.com" : "offline.html";
-                    }, 1500);
+                    }, 1800);
                 };
             </script>
         </body>
         </html>
         EOF
 
-        # --- INJECTION DE OFFLINE.HTML (ASTRONAUTE PREMIUM) ---
+        # --- INJECTION DE OFFLINE.HTML (INTERFACE PREMIUM GLASSMORPHISM) ---
         cat << 'EOF' > offline.html
         <!DOCTYPE html>
         <html lang="fr">
@@ -182,18 +169,54 @@ jobs:
             <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                :root { --bg: #030303; --surface: #0a0a0a; --card-bg: #000000; --border: rgba(255, 255, 255, 0.08); --accent: #ffffff; --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+                :root { --bg: #030303; --border: rgba(255, 255, 255, 0.07); --accent: #ffffff; --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
                 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
-                body { background-color: var(--bg); color: white; overflow: hidden; background-image: radial-gradient(circle at 50% -20%, #1a1a1a 0%, #030303 80%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-                .lost-container { max-width: 450px; width: 100%; background: var(--card-bg); border: 1px solid var(--border); border-radius: 35px; padding: 40px 30px; text-align: center; box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8); }
-                .logo { font-size: 1.4rem; font-weight: 800; margin-bottom: 35px; letter-spacing: -0.5px; }
-                .logo span { color: #555; }
-                @keyframes floatSpace { 0% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(-15px) rotate(4deg); } 100% { transform: translateY(0px) rotate(0deg); } }
-                .svg-wrapper { width: 200px; height: 200px; margin: 0 auto 30px; animation: floatSpace 6s ease-in-out infinite; }
-                h1 { font-size: 2rem; font-weight: 800; margin-bottom: 12px; }
-                p { color: #666; font-size: 0.9rem; margin-bottom: 35px; }
-                .btn-reconnect { display: inline-flex; align-items: center; justify-content: center; gap: 10px; width: 100%; background: #111; color: white; padding: 16px; border-radius: 18px; font-weight: 800; border: 1px solid var(--border); cursor: pointer; transition: var(--transition); }
-                .btn-reconnect:hover { background: white; color: black; }
+                body { 
+                    background-color: var(--bg); 
+                    color: white; 
+                    overflow: hidden; 
+                    background-image: radial-gradient(circle at 50% -20%, #1e1e24 0%, #030303 75%); 
+                    min-height: 100vh; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    padding: 20px; 
+                }
+                .lost-container { 
+                    max-width: 420px; 
+                    width: 100%; 
+                    background: rgba(255, 255, 255, 0.02); 
+                    backdrop-filter: blur(20px);
+                    -webkit-backdrop-filter: blur(20px);
+                    border: 1px solid var(--border); 
+                    border-radius: 35px; 
+                    padding: 45px 30px; 
+                    text-align: center; 
+                    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8); 
+                }
+                .logo { font-size: 1.4rem; font-weight: 800; margin-bottom: 30px; letter-spacing: -0.5px; }
+                .logo span { color: #ff3333; }
+                @keyframes floatSpace { 0% { transform: translateY(0px) rotate(0deg); } 50% { transform: translateY(-12px) rotate(3deg); } 100% { transform: translateY(0px) rotate(0deg); } }
+                .svg-wrapper { width: 160px; height: 160px; margin: 0 auto 30px; animation: floatSpace 5s ease-in-out infinite; }
+                h1 { font-size: 1.8rem; font-weight: 800; margin-bottom: 12px; letter-spacing: -0.5px; }
+                p { color: #888; font-size: 0.9rem; margin-bottom: 35px; line-height: 1.5; }
+                .btn-reconnect { 
+                    display: inline-flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    gap: 10px; 
+                    width: 100%; 
+                    background: rgba(255, 255, 255, 0.05); 
+                    color: white; 
+                    padding: 16px; 
+                    border-radius: 20px; 
+                    font-weight: 700; 
+                    border: 1px solid rgba(255, 255, 255, 0.1); 
+                    cursor: pointer; 
+                    transition: var(--transition); 
+                    backdrop-filter: blur(5px);
+                }
+                .btn-reconnect:hover { background: #ffffff; color: #000000; border-color: #ffffff; box-shadow: 0 10px 30px rgba(255, 255, 255, 0.15); }
                 .btn-reconnect.loading .fa-spinner { display: inline-block; animation: spin 0.8s linear infinite; }
                 .btn-reconnect .fa-spinner { display: none; }
                 @keyframes spin { to { transform: rotate(360deg); } }
@@ -204,15 +227,15 @@ jobs:
                 <div class="logo">Goku<span>Senseiz.</span></div>
                 <div class="svg-wrapper">
                     <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-                        <circle cx="100" cy="100" r="85" stroke="rgba(255,255,255,0.03)" stroke-width="2" stroke-dasharray="6 6"/>
-                        <circle cx="35" cy="45" r="4" fill="#555" />
-                        <path d="M70 125C70 115 80 105 100 105C120 105 130 115 130 125V160H70V125Z" fill="#0f0f0f" stroke="var(--border)" stroke-width="2"/>
-                        <circle cx="100" cy="80" r="42" fill="#0a0a0a" stroke="var(--border)" stroke-width="2.5"/>
-                        <path d="M70 82C70 65 80 54 100 54C120 54 130 65 130 82C130 92 122 102 100 102C78 102 70 92 70 82Z" fill="#000000" stroke="rgba(255,255,255,0.15)" stroke-width="2"/>
+                        <circle cx="100" cy="100" r="85" stroke="rgba(255,255,255,0.04)" stroke-width="2" stroke-dasharray="6 6"/>
+                        <circle cx="35" cy="45" r="4" fill="#ff3333" opacity="0.6"/>
+                        <path d="M70 125C70 115 80 105 100 105C120 105 130 115 130 125V160H70V125Z" fill="rgba(255,255,255,0.02)" stroke="var(--border)" stroke-width="2"/>
+                        <circle cx="100" cy="80" r="42" fill="rgba(255,255,255,0.01)" stroke="var(--border)" stroke-width="2.5"/>
+                        <path d="M70 82C70 65 80 54 100 54C120 54 130 65 130 82C130 92 122 102 100 102C78 102 70 92 70 82Z" fill="#000000" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
                     </svg>
                 </div>
-                <h1>Hors ligne</h1>
-                <p>La connexion avec GokuSenseiz a été interrompue.<br>Veuillez vérifier votre accès réseau.</p>
+                <h1>Connexion perdue</h1>
+                <p>Impossible de joindre GokuSenseiz.<br>Vérifiez votre configuration réseau.</p>
                 <button class="btn-reconnect" id="btnReconnect" onclick="triggerRetry()">
                     <i class="fa-solid fa-spinner"></i>
                     <span class="btn-text">Réessayer</span>
@@ -238,37 +261,18 @@ jobs:
         });
         EOF
 
-    - name: Ajouter la plateforme iOS
+    - name: Ajouter la plateforme Android
       run: |
         cd goku-app
-        cordova platform add ios
+        cordova platform add android
 
-    - name: Compiler l'application (.app)
+    - name: Compiler l'application Android (APK debug)
       run: |
-        cd goku-app/platforms/ios
-        SCHEME_NAME="App"
-        PROJECT_NAME="App.xcodeproj"
-        xcodebuild -project "$PROJECT_NAME" \
-          -scheme "$SCHEME_NAME" \
-          -configuration Release \
-          -sdk iphoneos \
-          -destination "generic/platform=iOS" \
-          -derivedDataPath "build_output" \
-          CODE_SIGNING_ALLOWED=NO \
-          CODE_SIGNING_REQUIRED=NO \
-          AD_HOC_CODE_SIGNING_ALLOWED=YES \
-          clean build
+        cd goku-app
+        cordova build android --device
 
-    - name: Créer le fichier .IPA
-      run: |
-        mkdir -p ${{ github.workspace }}/ipa/Payload
-        APP_PATH=$(find goku-app/platforms/ios/build_output -name "*.app" -type d | head -n 1)
-        cp -R "$APP_PATH" ${{ github.workspace }}/ipa/Payload/
-        cd ${{ github.workspace }}/ipa
-        zip -r ${{ github.workspace }}/GokuSensiz.ipa .
-
-    - name: Télécharger l'IPA
+    - name: Télécharger l'APK généré
       uses: actions/upload-artifact@v4
       with:
-        name: GokuSensiz-IPA
-        path: ${{ github.workspace }}/GokuSensiz.ipa
+        name: GokuSensiz-APK
+        path: goku-app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
