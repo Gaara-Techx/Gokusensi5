@@ -1,4 +1,4 @@
-Name: Compiler Gokusensi Android Play Store
+name: Compiler Gokusensi Android Play Store
 
 on:
   workflow_dispatch:
