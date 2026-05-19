@@ -1,4 +1,4 @@
-name: Compiler Gokusensi APK
+Name: Compiler Gokusensi Android Play Store
 
 on:
   workflow_dispatch:
@@ -23,56 +23,128 @@ jobs:
     - name: Installer Node.js et Cordova
       run: npm install -g cordova
 
-    - name: Créer le projet et Configurer les visuels (Icône + Splash)
+    - name: Créer le projet et Générer les Icônes Android
       run: |
         cordova create goku-app com.gokusensi.shop "GokuSensei"
         cd goku-app
         
-        # Création des dossiers de ressources
+        # Création des dossiers pour les icônes Android (Mipmap)
         mkdir -p res/icon/android
-        mkdir -p res/screen/android
         
-        # Téléchargement de ton image
-        curl -L "https://files.catbox.moe/pukmfj.jpg" -o res/icon/android/icon.jpg
-        cp res/icon/android/icon.jpg res/screen/android/splash.jpg
+        # Téléchargement de ton icône
+        curl -L "https://files.catbox.moe/pukmfj.jpg" -o res/icon/android/base.jpg
+        
+        # Installation de ImageMagick pour redimensionner les icônes proprement sur Linux
+        sudo apt-get update && sudo apt-get install -y imagemagick
 
-        # Injection de la config pour supprimer le logo Cordova par défaut
+        # Génération des différentes tailles d'icônes requises par Android
+        convert res/icon/android/base.jpg -resize 36x36 res/icon/android/ldpi.png
+        convert res/icon/android/base.jpg -resize 48x48 res/icon/android/mdpi.png
+        convert res/icon/android/base.jpg -resize 72x72 res/icon/android/hdpi.png
+        convert res/icon/android/base.jpg -resize 96x96 res/icon/android/xhdpi.png
+        convert res/icon/android/base.jpg -resize 144x144 res/icon/android/xxhdpi.png
+        convert res/icon/android/base.jpg -resize 192x192 res/icon/android/xxxhdpi.png
+        
+        # Configuration du config.xml pour Android
         node -e "
           const fs = require('fs');
           let config = fs.readFileSync('config.xml', 'utf8');
           
-          const visualConfig = '  <allow-navigation href=\"https://gokusensi.com/*\" />\n' +
+          const androidConfig = '  <allow-navigation href=\"https://gokusensi.com/*\" />\n' +
             '  <platform name=\"android\">\n' +
-            '    <icon src=\"res/icon/android/icon.jpg\" />\n' +
+            '    <icon src=\"res/icon/android/ldpi.png\" density=\"ldpi\" />\n' +
+            '    <icon src=\"res/icon/android/mdpi.png\" density=\"mdpi\" />\n' +
+            '    <icon src=\"res/icon/android/hdpi.png\" density=\"hdpi\" />\n' +
+            '    <icon src=\"res/icon/android/xhdpi.png\" density=\"xhdpi\" />\n' +
+            '    <icon src=\"res/icon/android/xxhdpi.png\" density=\"xxhdpi\" />\n' +
+            '    <icon src=\"res/icon/android/xxxhdpi.png\" density=\"xxxhdpi\" />\n' +
             '    <preference name=\"SplashScreen\" value=\"screen\" />\n' +
             '    <preference name=\"SplashMaintainAspectRatio\" value=\"true\" />\n' +
-            '    <splash src=\"res/screen/android/splash.jpg\" />\n' +
             '  </platform>\n</widget>';
           
-          config = config.replace('</widget>', visualConfig);
+          config = config.replace('</widget>', androidConfig);
           fs.writeFileSync('config.xml', config);
         "
 
-    - name: Injecter l'interface (Glassmorphism)
+    - name: Injecter l'interface (Ton style HTML conservé)
       run: |
         cd goku-app/www
-        # (Le code HTML/CSS reste identique à tes versions précédentes)
+        # Ton code HTML Anime.js
         cat << 'EOF' > index.html
         <!DOCTYPE html>
         <html lang="fr">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <title>GokuSensei | Chargement</title>
+            <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;900&display=swap" rel="stylesheet">
             <style>
-                body { background: #030303; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; color: white; }
-                .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); padding: 40px; border-radius: 30px; text-align: center; }
+                :root { --bg: #030303; --accent: #ffffff; --z-color: #ff3333; }
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { background-color: var(--bg); background-image: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #030303 100%); margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center; font-family: 'Outfit', sans-serif; overflow: hidden; }
+                .wrapper { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; max-width: 600px; padding: 20px; }
+                .title-js { display: flex; gap: 15px; will-change: gap; }
+                .letter { position: relative; font-size: 8.5vw; font-weight: 900; color: transparent; -webkit-text-stroke: 1px rgba(255, 255, 255, 0.15); text-transform: uppercase; display: inline-block; opacity: 0; }
+                @media (min-width: 768px) { .letter { font-size: 4.5rem; } }
+                .letter::before { content: attr(data-char); position: absolute; top: 0; left: 0; width: 100%; height: 100%; color: var(--accent); -webkit-text-stroke: 0px transparent; clip-path: inset(0 100% 0 0); transition: none; }
+                .z-char { -webkit-text-stroke: 1px rgba(255, 51, 51, 0.4); }
+                .z-char::before { color: var(--z-color); filter: drop-shadow(0 0 10px rgba(255, 51, 51, 0.6)); }
+                .scan-line { position: absolute; top: -20%; bottom: -20%; left: 0; width: 3px; background: #fff; box-shadow: 0 0 20px #fff, 0 0 40px var(--z-color); opacity: 0; pointer-events: none; z-index: 10; }
             </style>
         </head>
         <body>
-            <div class="glass"><h1>GokuSenseiz</h1><p>Chargement...</p></div>
-            <script>setTimeout(() => { window.location.href = "https://gokusensi.com"; }, 2000);</script>
+            <div class="wrapper">
+                <div class="scan-line" id="scanner"></div>
+                <div class="title-js" id="title">
+                    <span class="letter" data-char="G">G</span><span class="letter" data-char="O">O</span><span class="letter" data-char="K">K</span><span class="letter" data-char="U">U</span><span class="letter" data-char="S">S</span><span class="letter" data-char="E">E</span><span class="letter" data-char="N">N</span><span class="letter" data-char="S">S</span><span class="letter" data-char="E">E</span><span class="letter" data-char="I">I</span><span class="letter z-char" data-char="Z">Z</span>
+                </div>
+            </div>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+            <script>
+                const tl = anime.timeline();
+                tl.add({ targets: '.letter', opacity: [0, 1], scale: [1.5, 1], rotateY: [-30, 0], filter: ['blur(10px)', 'blur(0px)'], duration: 700, delay: anime.stagger(40), easing: 'easeOutExpo' });
+                tl.add({ targets: '#title', gap: ['15px', '2px'], duration: 800, easing: 'cubicBezier(0.25, 1, 0.5, 1)' }, '-=600');
+                const styleUpdate = document.createElement('style'); document.head.appendChild(styleUpdate);
+                tl.add({ targets: '.letter', update: (anim) => { let cssRules = ''; document.querySelectorAll('.letter').forEach((el, i) => { const delayFactor = i * 6; let val = 100 - (anim.progress * 1.4) + delayFactor; val = Math.min(100, Math.max(0, val)); cssRules += `.letter:nth-child(${i+1})::before { clip-path: inset(0 ${val}% 0 0); }\n`; }); styleUpdate.innerHTML = cssRules; }, duration: 700, easing: 'linear' }, '-=800');
+                tl.add({ targets: '#scanner', left: ['-5%', '105%'], opacity: [0, 1, 1, 0], duration: 700, easing: 'easeInOutQuad' }, '-=700');
+            </script>
+            <script>
+                if ("serviceWorker" in navigator) { navigator.serviceWorker.register("sw.js"); }
+                window.onload = () => { setTimeout(() => { window.location.href = navigator.onLine ? "https://gokusensi.com" : "offline.html"; }, 2500); };
+            </script>
         </body>
         </html>
+        EOF
+
+        # --- TON CODE OFFLINE.HTML (CONSERVÉ) ---
+        cat << 'EOF' > offline.html
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <style>
+                :root { --bg: #030303; --card-bg: #000000; --border: rgba(255, 255, 255, 0.08); }
+                body { background-color: var(--bg); color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
+                .lost-container { background: var(--card-bg); border: 1px solid var(--border); border-radius: 35px; padding: 40px; }
+                .btn-reconnect { background: #fff; color: #000; padding: 15px 30px; border-radius: 15px; font-weight: bold; border: none; cursor: pointer; margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="lost-container">
+                <h1>Signal Perdu</h1>
+                <p>Vérifiez votre connexion internet.</p>
+                <button class="btn-reconnect" onclick="window.location.href='index.html'">Réessayer</button>
+            </div>
+        </body>
+        </html>
+        EOF
+
+        # --- TON SERVICE WORKER ---
+        cat << 'EOF' > sw.js
+        const CACHE_NAME = 'goku-v1';
+        self.addEventListener('install', e => e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(['offline.html', 'index.html']))));
+        self.addEventListener('fetch', e => { if (e.request.mode === 'navigate') e.respondWith(fetch(e.request).catch(() => caches.match('offline.html'))); });
         EOF
 
     - name: Ajouter la plateforme Android
@@ -80,13 +152,22 @@ jobs:
         cd goku-app
         cordova platform add android
 
-    - name: Compiler l'APK
+    - name: Compiler pour le Play Store (AAB + APK)
       run: |
         cd goku-app
-        cordova build android --device
+        # APK pour test
+        cordova build android --device --debug
+        # AAB pour Google Play
+        cordova build android --release -- --packageType=bundle
 
-    - name: Télécharger l'APK
+    - name: Télécharger l'APK (Pour test)
       uses: actions/upload-artifact@v4
       with:
-        name: GokuSensiz-APK
+        name: GokuSensei-Tester-APK
         path: goku-app/platforms/android/app/build/outputs/apk/debug/app-debug.apk
+
+    - name: Télécharger l'AAB (Pour le Play Store)
+      uses: actions/upload-artifact@v4
+      with:
+        name: GokuSensei-PlayStore-Bundle
+        path: goku-app/platforms/android/app/build/outputs/bundle/release/app-release.aab
